@@ -6,10 +6,14 @@ services:
     project: ./src/frontend
     language: js
     host: containerapp
+    docker:
+      remoteBuild: true
   backend:
     project: ./src/backend
     language: js
     host: containerapp
+    docker:
+      remoteBuild: true
 infra:
   provider: bicep
   path: infra
