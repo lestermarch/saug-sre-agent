@@ -31,6 +31,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Net.Http
 
 function Resolve-ServiceUrl {
     param(
@@ -66,7 +67,7 @@ function Resolve-ServiceUrl {
 
 function Invoke-TrafficRequest {
     param(
-        [System.Net.Http.HttpClient]$Client,
+        $Client,
         [pscustomobject]$Target
     )
 
