@@ -1,0 +1,22 @@
+{
+  "name": "govuk-frontend-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mock GOV.UK public service frontend for the Azure SRE Agent demo",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "govuk-frontend": "^6.5.0",
+    "nunjucks": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
+  }
+}

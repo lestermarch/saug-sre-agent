@@ -1,0 +1,83 @@
+{% extends "govuk/template.njk" %}
+{% from "govuk/components/phase-banner/macro.njk" import govukPhaseBanner %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+
+{% set assetPath = "/assets" %}
+{% set htmlClasses = "govuk-template--rebranded" %}
+
+{% block pageTitle %}Check emergency biscuit availability - {{ serviceName }} - GOV.UK{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="/stylesheets/govuk-frontend.min.css">
+{% endblock %}
+
+{% block headerEnd %}
+  {{ govukPhaseBanner({
+    tag: { text: "Alpha" },
+    text: "This is a demonstration service. Do not use it to plan a real biscuit emergency.",
+    classes: "govuk-width-container"
+  }) }}
+{% endblock %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-xl">Check emergency biscuit availability</h1>
+
+      <p class="govuk-body-l">
+        Find out if the national biscuit cupboard can support an urgent tea break.
+      </p>
+
+      <h2 class="govuk-heading-l">Current service status</h2>
+
+      <p class="govuk-body">
+        {{ govukTag({ text: status.statusLabel, classes: status.tagClass }) }}
+      </p>
+
+      {% if status.isFallback %}
+        {{ govukWarningText({
+          text: "Live status is not available. The details below may be out of date.",
+          iconFallbackText: "Warning"
+        }) }}
+      {% endif %}
+
+      {{ govukSummaryList({
+        rows: [
+          {
+            key: { text: "Service" },
+            value: { text: status.service }
+          },
+          {
+            key: { text: "What is happening" },
+            value: { text: status.summary }
+          },
+          {
+            key: { text: "Last checked" },
+            value: { text: status.updatedAt }
+          }
+        ]
+      }) }}
+
+      <h2 class="govuk-heading-l">What this service covers</h2>
+      <p class="govuk-body">You can use this service to check support for:</p>
+      <ul class="govuk-list govuk-list--bullet">
+        <li>emergency biscuits</li>
+        <li>unexpectedly long meetings</li>
+        <li>tea breaks affected by cloud incidents</li>
+      </ul>
+
+      <p class="govuk-body">
+        No biscuits are ordered through this service. This keeps the prototype crumb-free.
+      </p>
+    </div>
+  </div>
+{% endblock %}
+
+{% block bodyEnd %}
+  <script type="module">
+    import { initAll } from '/javascripts/govuk-frontend.min.js'
+    initAll()
+  </script>
+{% endblock %}

@@ -1,0 +1,15 @@
+name: govuk-sre-demo
+metadata:
+  template: govuk-sre-demo@0.0.1
+services:
+  frontend:
+    project: ./src/frontend
+    language: js
+    host: containerapp
+  backend:
+    project: ./src/backend
+    language: js
+    host: containerapp
+infra:
+  provider: bicep
+  path: infra
