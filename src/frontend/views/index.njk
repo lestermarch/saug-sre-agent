@@ -15,6 +15,7 @@
 
 {% block head %}
   <link rel="stylesheet" href="/stylesheets/govuk-frontend.min.css">
+  <link rel="stylesheet" href="/stylesheets/app.css">
 {% endblock %}
 
 {% block headerEnd %}
@@ -34,10 +35,16 @@
       </p>
 
       <h2 class="govuk-heading-m">Live service connections</h2>
-      <p class="govuk-body">
-        {{ govukTag({ text: connection.api.label, classes: connection.api.tagClass }) }}
-        {{ govukTag({ text: connection.database.label, classes: connection.database.tagClass }) }}
-      </p>
+      <ul class="connection-status govuk-list">
+        <li class="connection-status__item">
+          <span class="govuk-heading-s govuk-!-margin-bottom-2">Biscuit API</span>
+          {{ govukTag({ text: connection.api.label, classes: connection.api.tagClass }) }}
+        </li>
+        <li class="connection-status__item">
+          <span class="govuk-heading-s govuk-!-margin-bottom-2">PostgreSQL database</span>
+          {{ govukTag({ text: connection.database.label, classes: connection.database.tagClass }) }}
+        </li>
+      </ul>
 
       {% if search.source == "api-error" %}
         {{ govukNotificationBanner({
@@ -61,14 +68,14 @@
       {% endif %}
 
       <form method="get" action="/" class="govuk-!-margin-top-6">
-        <div class="govuk-grid-row">
+        <div class="govuk-grid-row biscuit-filter-grid">
           <div class="govuk-grid-column-one-third">
             {{ govukInput({
               id: "search",
               name: "search",
               value: filters.search,
               label: { text: "Search biscuits", classes: "govuk-label--m" },
-              hint: { text: "For example, custard, chocolate or diplomatic." }
+              hint: { text: "Enter a biscuit, office or keyword." }
             }) }}
           </div>
           <div class="govuk-grid-column-one-third">
@@ -76,6 +83,7 @@
               id: "department",
               name: "department",
               label: { text: "Department", classes: "govuk-label--m" },
+              hint: { text: "Choose a department, or search all departments." },
               items: departmentOptions
             }) }}
           </div>
@@ -84,6 +92,7 @@
               id: "location",
               name: "location",
               label: { text: "Office location", classes: "govuk-label--m" },
+              hint: { text: "Choose a location, or search all locations." },
               items: locationOptions
             }) }}
           </div>

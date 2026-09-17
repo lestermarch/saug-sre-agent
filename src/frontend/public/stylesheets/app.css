@@ -1,0 +1,29 @@
+.connection-status {
+  display: grid;
+  gap: 15px;
+  margin-bottom: 30px;
+  max-width: 660px;
+}
+
+.connection-status__item {
+  box-sizing: border-box;
+  margin-bottom: 0;
+  padding: 15px;
+  border: 1px solid #b1b4b6;
+  border-left: 5px solid #1d70b8;
+  background: #f3f2f1;
+}
+
+.connection-status__item .govuk-tag {
+  max-width: none;
+}
+
+@media (min-width: 40.0625em) {
+  .connection-status {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .biscuit-filter-grid .govuk-hint {
+    min-height: 3em;
+  }
+}

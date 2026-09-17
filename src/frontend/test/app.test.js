@@ -62,6 +62,9 @@ test('renders searchable database results with canonical GOV.UK assets', async (
   assert.match(requestedUrl, /department=Cabinet\+Office/);
   assert.match(html, /API available/);
   assert.match(html, /Database reachable/);
+  assert.match(html, /class="connection-status govuk-list"/);
+  assert.match(html, /Choose a department, or search all departments/);
+  assert.match(html, /href="\/stylesheets\/app\.css"/);
   assert.match(html, /Search biscuit register/);
   assert.match(html, /Live records from the biscuit register/);
   assert.match(html, /&lt;script&gt;alert\(&quot;crumbs&quot;\)&lt;\/script&gt;/);
@@ -116,6 +119,7 @@ test('exposes health endpoints and serves GOV.UK assets locally', async () => {
 
   for (const path of [
     '/stylesheets/govuk-frontend.min.css',
+    '/stylesheets/app.css',
     '/javascripts/govuk-frontend.min.js',
     '/assets/fonts/bold-b542beb274-v2.woff2'
   ]) {

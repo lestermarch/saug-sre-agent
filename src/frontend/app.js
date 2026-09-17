@@ -104,6 +104,7 @@ function createApp(options = {}) {
   const govukPath = path.dirname(require.resolve('govuk-frontend/package.json'));
   const govukDistPath = path.join(govukPath, 'dist');
   const govukAssetsPath = path.join(govukDistPath, 'govuk', 'assets');
+  const publicPath = path.join(__dirname, 'public');
   const backendUrl = options.backendUrl || process.env.BACKEND_URL || 'http://localhost:8081';
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const timeoutMs = options.timeoutMs || 5000;
@@ -119,6 +120,7 @@ function createApp(options = {}) {
   });
 
   app.use('/assets', express.static(govukAssetsPath, { immutable: true, maxAge: '1y' }));
+  app.use(express.static(publicPath));
   app.get('/stylesheets/govuk-frontend.min.css', (request, response) => {
     response.sendFile(path.join(govukDistPath, 'govuk', 'govuk-frontend.min.css'));
   });
