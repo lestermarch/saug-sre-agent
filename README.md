@@ -63,6 +63,40 @@ azd up
 
 Azure SRE Agent is deliberately not configured here; this repo is only the environment to be managed later in the demo pipeline.
 
+## Traffic simulator
+
+Use the PowerShell traffic simulator to continuously exercise the public page, API liveness endpoint and database-backed biscuit search:
+
+```powershell
+.\scripts\Invoke-TrafficSimulator.ps1
+```
+
+The script uses the selected `azd` environment's `FRONTEND_URL` and `BACKEND_URL` values by default. Each request prints a timestamp, response time and HTTP result in green for up or red for down. When an endpoint recovers, it prints the measured outage duration.
+
+Useful options:
+
+```powershell
+# One pass for a quick health check
+.\scripts\Invoke-TrafficSimulator.ps1 -Once
+
+# Generate traffic every 2 seconds for 30 minutes and save evidence
+.\scripts\Invoke-TrafficSimulator.ps1 `
+  -IntervalSeconds 2 `
+  -DurationMinutes 30 `
+  -LogPath .\traffic-results.csv
+
+# Monitor explicitly supplied URLs
+.\scripts\Invoke-TrafficSimulator.ps1 `
+  -FrontendUrl https://frontend.example.gov.uk `
+  -BackendUrl https://api.example.gov.uk
+```
+
+The three checks intentionally isolate the failure boundary:
+
+- **Frontend** confirms the GOV.UK page renders.
+- **API** confirms the backend process responds independently of PostgreSQL.
+- **Database search** confirms the API can query PostgreSQL through Private Link.
+
 ## Demo story
 
 The public-facing site is deliberately styled like a very important government service, with humorous biscuit inventory content. Search filters exercise the complete frontend-to-API-to-private-database path, making API and database incidents immediately visible.
