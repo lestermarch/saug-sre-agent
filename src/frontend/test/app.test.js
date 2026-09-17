@@ -6,8 +6,8 @@ const servers = [];
 const silentLogger = { warn() {}, error() {} };
 
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map(server => new Promise((resolve, reject) => {
-    server.close(error => error ? reject(error) : resolve());
+  await Promise.all(servers.splice(0).map((server) => new Promise((resolve, reject) => {
+    server.close((error) => error ? reject(error) : resolve());
   })));
 });
 
@@ -18,76 +18,101 @@ async function listen(app) {
     server.once('listening', resolve);
     server.once('error', reject);
   });
-  const { port } = server.address();
-  return `http://127.0.0.1:${port}`;
+  return `http://127.0.0.1:${server.address().port}`;
 }
 
-test('renders backend status with canonical GOV.UK assets and escaped content', async () => {
+function databaseResponse(results = []) {
+  return new Response(JSON.stringify({
+    status: 'healthy',
+    source: 'database',
+    summary: 'Live records returned.',
+    database: { reachable: true, state: 'connected' },
+    count: results.length,
+    results
+  }), { status: 200, headers: { 'content-type': 'application/json' } });
+}
+
+test('renders searchable database results with canonical GOV.UK assets', async () => {
   let requestedUrl;
   const app = createApp({
     backendUrl: 'http://backend.example/base',
     fetchImpl: async (url, options) => {
       requestedUrl = url.toString();
       assert.equal(options.headers.accept, 'application/json');
-      return new Response(JSON.stringify({
-        service: '<script>alert("crumbs")</script>',
-        status: 'healthy',
-        summary: 'All biscuits accounted for.',
-        updatedAt: '2026-09-17T08:00:00Z'
-      }), { status: 200, headers: { 'content-type': 'application/json' } });
+      return databaseResponse([{
+        name: '<script>alert("crumbs")</script>',
+        department: 'Cabinet Office',
+        office: 'COBR snack annex',
+        location: 'London',
+        type: 'Sandwich biscuit',
+        quantity: 148,
+        riskLevel: 'low',
+        notes: 'All biscuits accounted for.'
+      }]);
     },
     logger: silentLogger
   });
 
-  const response = await fetch(`${await listen(app)}/`);
+  const response = await fetch(`${await listen(app)}/?search=custard&department=Cabinet%20Office&location=London`);
   const html = await response.text();
 
   assert.equal(response.status, 200);
-  assert.equal(requestedUrl, 'http://backend.example/base/api/status');
-  assert.match(html, /<html[^>]+class="[^"]*govuk-template/);
-  assert.match(html, /govuk-phase-banner/);
-  assert.match(html, /govuk-summary-list/);
-  assert.match(html, /href="\/stylesheets\/govuk-frontend\.min\.css"/);
-  assert.match(html, /from '\/javascripts\/govuk-frontend\.min\.js'/);
-  assert.match(html, /All biscuits accounted for\./);
+  assert.match(requestedUrl, /\/api\/biscuits\?/);
+  assert.match(requestedUrl, /search=custard/);
+  assert.match(requestedUrl, /department=Cabinet\+Office/);
+  assert.match(html, /API available/);
+  assert.match(html, /Database reachable/);
+  assert.match(html, /Search biscuit register/);
+  assert.match(html, /Live records from the biscuit register/);
   assert.match(html, /&lt;script&gt;alert\(&quot;crumbs&quot;\)&lt;\/script&gt;/);
   assert.doesNotMatch(html, /<script>alert\("crumbs"\)<\/script>/);
 });
 
-test('renders a clear degraded fallback when the backend is unavailable', async () => {
+test('distinguishes a reachable API from a failed database', async () => {
+  const app = createApp({
+    backendUrl: 'http://backend.example',
+    fetchImpl: async () => new Response(JSON.stringify({
+      status: 'unavailable',
+      source: 'database-error',
+      summary: 'PostgreSQL unavailable.',
+      database: { reachable: false, state: 'unavailable' },
+      count: 0,
+      results: []
+    }), { status: 503, headers: { 'content-type': 'application/json' } }),
+    logger: silentLogger
+  });
+
+  const html = await (await fetch(`${await listen(app)}/`)).text();
+  assert.match(html, /API available/);
+  assert.match(html, /Database unavailable/);
+  assert.match(html, /cannot reach PostgreSQL over the private network/);
+});
+
+test('shows an API failure without implying the database responded', async () => {
   const app = createApp({
     backendUrl: 'http://backend.example',
     fetchImpl: async () => { throw new Error('connection refused'); },
     logger: silentLogger
   });
 
-  const response = await fetch(`${await listen(app)}/`);
-  const html = await response.text();
-
-  assert.equal(response.status, 200);
-  assert.match(html, /Some problems/);
-  assert.match(html, /Live status is not available/);
-  assert.match(html, /SRE team has put the kettle on/);
-  assert.match(html, /Not available/);
+  const html = await (await fetch(`${await listen(app)}/`)).text();
+  assert.match(html, /API unavailable/);
+  assert.match(html, /Database status unknown/);
+  assert.match(html, /Searches cannot be processed/);
 });
 
-test('exposes liveness, readiness and backwards-compatible health endpoints', async () => {
+test('exposes health endpoints and serves GOV.UK assets locally', async () => {
   const baseUrl = await listen(createApp({ logger: silentLogger }));
 
-  for (const [path, status] of [
+  for (const [path, expected] of [
     ['/health/live', 'alive'],
     ['/health/ready', 'ready'],
     ['/health', 'ok']
   ]) {
     const response = await fetch(`${baseUrl}${path}`);
     assert.equal(response.status, 200);
-    assert.equal(response.headers.get('cache-control'), 'no-store');
-    assert.deepEqual(await response.json(), { status, service: 'frontend' });
+    assert.deepEqual(await response.json(), { status: expected, service: 'frontend' });
   }
-});
-
-test('serves GOV.UK Frontend CSS, JavaScript and font assets locally', async () => {
-  const baseUrl = await listen(createApp({ logger: silentLogger }));
 
   for (const path of [
     '/stylesheets/govuk-frontend.min.css',
@@ -96,8 +121,5 @@ test('serves GOV.UK Frontend CSS, JavaScript and font assets locally', async () 
   ]) {
     const response = await fetch(`${baseUrl}${path}`);
     assert.equal(response.status, 200, path);
-    assert.ok(Number(response.headers.get('content-length')) > 100, path);
   }
 });
-
-

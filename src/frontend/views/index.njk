@@ -1,5 +1,9 @@
 {% extends "govuk/template.njk" %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 {% from "govuk/components/phase-banner/macro.njk" import govukPhaseBanner %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
 {% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
@@ -7,7 +11,7 @@
 {% set assetPath = "/assets" %}
 {% set htmlClasses = "govuk-template--rebranded" %}
 
-{% block pageTitle %}Check emergency biscuit availability - {{ serviceName }} - GOV.UK{% endblock %}
+{% block pageTitle %}Find biscuits in government offices - {{ serviceName }} - GOV.UK{% endblock %}
 
 {% block head %}
   <link rel="stylesheet" href="/stylesheets/govuk-frontend.min.css">
@@ -16,61 +20,139 @@
 {% block headerEnd %}
   {{ govukPhaseBanner({
     tag: { text: "Alpha" },
-    text: "This is a demonstration service. Do not use it to plan a real biscuit emergency.",
+    text: "This is a demonstration service. Biscuit intelligence may be politically sensitive.",
     classes: "govuk-width-container"
   }) }}
 {% endblock %}
 
 {% block content %}
   <div class="govuk-grid-row">
-    <div class="govuk-grid-column-two-thirds">
-      <h1 class="govuk-heading-xl">Check emergency biscuit availability</h1>
-
+    <div class="govuk-grid-column-full">
+      <h1 class="govuk-heading-xl">Find biscuits in government offices</h1>
       <p class="govuk-body-l">
-        Find out if the national biscuit cupboard can support an urgent tea break.
+        Search the cross-government biscuit register before arranging an important meeting or an avoidable incident.
       </p>
 
-      <h2 class="govuk-heading-l">Current service status</h2>
-
+      <h2 class="govuk-heading-m">Live service connections</h2>
       <p class="govuk-body">
-        {{ govukTag({ text: status.statusLabel, classes: status.tagClass }) }}
+        {{ govukTag({ text: connection.api.label, classes: connection.api.tagClass }) }}
+        {{ govukTag({ text: connection.database.label, classes: connection.database.tagClass }) }}
       </p>
 
-      {% if status.isFallback %}
+      {% if search.source == "api-error" %}
+        {{ govukNotificationBanner({
+          type: "error",
+          role: "alert",
+          titleText: "The biscuit API is unavailable",
+          html: "<p class=\"govuk-body\">The frontend is working, but it cannot contact the API. Searches cannot be processed.</p>"
+        }) }}
+      {% elif search.source == "database-error" %}
+        {{ govukNotificationBanner({
+          type: "error",
+          role: "alert",
+          titleText: "The biscuit database is unavailable",
+          html: "<p class=\"govuk-body\">The API responded, but it cannot reach PostgreSQL over the private network. No live biscuit records can be returned.</p>"
+        }) }}
+      {% elif search.source == "mock" %}
         {{ govukWarningText({
-          text: "Live status is not available. The details below may be out of date.",
+          text: "Showing local mock data because PostgreSQL is not configured.",
           iconFallbackText: "Warning"
         }) }}
       {% endif %}
 
+      <form method="get" action="/" class="govuk-!-margin-top-6">
+        <div class="govuk-grid-row">
+          <div class="govuk-grid-column-one-third">
+            {{ govukInput({
+              id: "search",
+              name: "search",
+              value: filters.search,
+              label: { text: "Search biscuits", classes: "govuk-label--m" },
+              hint: { text: "For example, custard, chocolate or diplomatic." }
+            }) }}
+          </div>
+          <div class="govuk-grid-column-one-third">
+            {{ govukSelect({
+              id: "department",
+              name: "department",
+              label: { text: "Department", classes: "govuk-label--m" },
+              items: departmentOptions
+            }) }}
+          </div>
+          <div class="govuk-grid-column-one-third">
+            {{ govukSelect({
+              id: "location",
+              name: "location",
+              label: { text: "Office location", classes: "govuk-label--m" },
+              items: locationOptions
+            }) }}
+          </div>
+        </div>
+        {{ govukButton({ text: "Search biscuit register" }) }}
+        <a class="govuk-link govuk-!-margin-left-3" href="/">Clear filters</a>
+      </form>
+
+      {% if search.source != "api-error" and search.source != "database-error" %}
+        <h2 class="govuk-heading-l">
+          {% if search.count == 1 %}1 biscuit record{% else %}{{ search.count }} biscuit records{% endif %}
+        </h2>
+
+        {% if search.count == 0 %}
+          <p class="govuk-body">No biscuits match these filters. This may require a ministerial direction.</p>
+        {% else %}
+          <div class="govuk-table__container">
+            <table class="govuk-table">
+              <caption class="govuk-table__caption govuk-table__caption--m">Live records from the biscuit register</caption>
+              <thead class="govuk-table__head">
+                <tr class="govuk-table__row">
+                  <th scope="col" class="govuk-table__header">Biscuit</th>
+                  <th scope="col" class="govuk-table__header">Department and office</th>
+                  <th scope="col" class="govuk-table__header">Location</th>
+                  <th scope="col" class="govuk-table__header">Available</th>
+                  <th scope="col" class="govuk-table__header">Tea-break risk</th>
+                </tr>
+              </thead>
+              <tbody class="govuk-table__body">
+                {% for biscuit in search.results %}
+                  <tr class="govuk-table__row">
+                    <th scope="row" class="govuk-table__header">
+                      {{ biscuit.name }}
+                      <span class="govuk-body-s govuk-!-display-block">{{ biscuit.type }}</span>
+                    </th>
+                    <td class="govuk-table__cell">
+                      {{ biscuit.department }}
+                      <span class="govuk-body-s govuk-!-display-block">{{ biscuit.office }}</span>
+                      <span class="govuk-body-s govuk-!-display-block">{{ biscuit.notes }}</span>
+                    </td>
+                    <td class="govuk-table__cell">{{ biscuit.location }}</td>
+                    <td class="govuk-table__cell govuk-table__cell--numeric">{{ biscuit.quantity }}</td>
+                    <td class="govuk-table__cell">
+                      {{ govukTag({
+                        text: biscuit.riskLevel,
+                        classes: biscuit.riskTagClass
+                      }) }}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      {% endif %}
+
+      <h2 class="govuk-heading-m">What the connection lights mean</h2>
       {{ govukSummaryList({
         rows: [
           {
-            key: { text: "Service" },
-            value: { text: status.service }
+            key: { text: "API available" },
+            value: { text: "The frontend can contact the backend Container App." }
           },
           {
-            key: { text: "What is happening" },
-            value: { text: status.summary }
-          },
-          {
-            key: { text: "Last checked" },
-            value: { text: status.updatedAt }
+            key: { text: "Database reachable" },
+            value: { text: "The API queried PostgreSQL through its private endpoint and returned live records." }
           }
         ]
       }) }}
-
-      <h2 class="govuk-heading-l">What this service covers</h2>
-      <p class="govuk-body">You can use this service to check support for:</p>
-      <ul class="govuk-list govuk-list--bullet">
-        <li>emergency biscuits</li>
-        <li>unexpectedly long meetings</li>
-        <li>tea breaks affected by cloud incidents</li>
-      </ul>
-
-      <p class="govuk-body">
-        No biscuits are ordered through this service. This keeps the prototype crumb-free.
-      </p>
     </div>
   </div>
 {% endblock %}

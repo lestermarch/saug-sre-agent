@@ -2,64 +2,100 @@ const express = require('express');
 const nunjucks = require('nunjucks');
 const path = require('node:path');
 
-const SERVICE_NAME = 'Emergency Biscuit Service';
-const FALLBACK_STATUS = Object.freeze({
-  service: SERVICE_NAME,
-  status: 'degraded',
-  summary: 'We cannot check the biscuit cupboard right now. The SRE team has put the kettle on.',
-  updatedAt: null,
-  source: 'fallback'
-});
+const SERVICE_NAME = 'Government Biscuit Location Service';
+const departments = [
+  'Cabinet Office',
+  'Department for Culture, Media and Sport',
+  'Department for Education',
+  'Department for Environment, Food and Rural Affairs',
+  'Department for Science, Innovation and Technology',
+  'Department for Transport',
+  'Department for Work and Pensions',
+  'Department of Health and Social Care',
+  'Foreign, Commonwealth and Development Office',
+  'HM Treasury',
+  'Home Office',
+  'Ministry of Justice'
+];
+const locations = ['Croydon', 'East Kilbride', 'Leeds', 'London', 'Manchester', 'Newcastle', 'Sheffield', 'York'];
 
-function displayDate(value) {
-  if (!value) return 'Not available';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Not available';
-
-  return new Intl.DateTimeFormat('en-GB', {
-    dateStyle: 'long',
-    timeStyle: 'short',
-    timeZone: 'Europe/London'
-  }).format(date);
-}
-
-function normaliseStatus(data) {
-  const allowedStatuses = new Set(['healthy', 'degraded', 'unavailable']);
-  const status = allowedStatuses.has(data?.status) ? data.status : 'unavailable';
-
+function normaliseQuery(query) {
   return {
-    service: typeof data?.service === 'string' && data.service.trim() ? data.service : SERVICE_NAME,
-    status,
-    statusLabel: {
-      healthy: 'Available',
-      degraded: 'Some problems',
-      unavailable: 'Unavailable'
-    }[status],
-    tagClass: {
-      healthy: 'govuk-tag--green',
-      degraded: 'govuk-tag--yellow',
-      unavailable: 'govuk-tag--red'
-    }[status],
-    summary: typeof data?.summary === 'string' && data.summary.trim()
-      ? data.summary
-      : 'No further information is available.',
-    updatedAt: displayDate(data?.updatedAt),
-    isFallback: data?.source === 'fallback'
+    search: typeof query.search === 'string' ? query.search.trim().slice(0, 100) : '',
+    department: departments.includes(query.department) ? query.department : '',
+    location: locations.includes(query.location) ? query.location : ''
   };
 }
 
-async function fetchBackendStatus({ backendUrl, fetchImpl, timeoutMs, logger }) {
+function connectionState({ apiReachable, databaseReachable, databaseState }) {
+  return {
+    api: apiReachable
+      ? { label: 'API available', tagClass: 'govuk-tag--green' }
+      : { label: 'API unavailable', tagClass: 'govuk-tag--red' },
+    database: databaseReachable
+      ? { label: 'Database reachable', tagClass: 'govuk-tag--green' }
+      : databaseState === 'not-configured'
+        ? { label: 'Database not configured', tagClass: 'govuk-tag--yellow' }
+        : databaseState === 'unknown'
+          ? { label: 'Database status unknown', tagClass: 'govuk-tag--grey' }
+          : { label: 'Database unavailable', tagClass: 'govuk-tag--red' }
+  };
+}
+
+function presentResults(results) {
+  return Array.isArray(results) ? results.map((biscuit) => ({
+    ...biscuit,
+    riskTagClass: {
+      high: 'govuk-tag--red',
+      medium: 'govuk-tag--yellow',
+      low: 'govuk-tag--green'
+    }[biscuit.riskLevel] || 'govuk-tag--grey'
+  })) : [];
+}
+
+async function fetchBiscuits({ backendUrl, fetchImpl, timeoutMs, logger, filters }) {
+  const endpoint = new URL('/api/biscuits', `${backendUrl.replace(/\/$/, '')}/`);
+  for (const [name, value] of Object.entries(filters)) {
+    if (value) endpoint.searchParams.set(name, value);
+  }
+
   try {
-    const response = await fetchImpl(`${backendUrl.replace(/\/$/, '')}/api/status`, {
+    const response = await fetchImpl(endpoint, {
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(timeoutMs)
     });
-    if (!response.ok) throw new Error(`backend returned HTTP ${response.status}`);
-    return await response.json();
+    const data = await response.json();
+    if (!response.ok && data?.source !== 'database-error') {
+      throw new Error(`backend returned HTTP ${response.status}`);
+    }
+    return {
+      ...data,
+      results: presentResults(data?.results),
+      apiReachable: true,
+      databaseReachable: data?.database?.reachable === true,
+      databaseState: data?.database?.state || 'unknown'
+    };
   } catch (error) {
-    logger.warn(`Backend status unavailable: ${error.message}`);
-    return FALLBACK_STATUS;
+    logger.warn(`Biscuit API unavailable: ${error.message}`);
+    return {
+      status: 'unavailable',
+      source: 'api-error',
+      summary: 'The biscuit API cannot be reached. Search requests are not reaching the database.',
+      database: { reachable: false, state: 'unknown' },
+      count: 0,
+      results: [],
+      apiReachable: false,
+      databaseReachable: false,
+      databaseState: 'unknown'
+    };
   }
+}
+
+function selectOptions(values, selected, emptyLabel) {
+  return [
+    { value: '', text: emptyLabel, selected: !selected },
+    ...values.map((value) => ({ value, text: value, selected: value === selected }))
+  ];
 }
 
 function createApp(options = {}) {
@@ -70,7 +106,7 @@ function createApp(options = {}) {
   const govukAssetsPath = path.join(govukDistPath, 'govuk', 'assets');
   const backendUrl = options.backendUrl || process.env.BACKEND_URL || 'http://localhost:8081';
   const fetchImpl = options.fetchImpl || globalThis.fetch;
-  const timeoutMs = options.timeoutMs || 2000;
+  const timeoutMs = options.timeoutMs || 5000;
   const logger = options.logger || console;
 
   app.disable('x-powered-by');
@@ -102,10 +138,15 @@ function createApp(options = {}) {
 
   app.get('/', async (request, response, next) => {
     try {
-      const data = await fetchBackendStatus({ backendUrl, fetchImpl, timeoutMs, logger });
+      const filters = normaliseQuery(request.query);
+      const data = await fetchBiscuits({ backendUrl, fetchImpl, timeoutMs, logger, filters });
       response.set('Cache-Control', 'no-store').render('index', {
         serviceName: SERVICE_NAME,
-        status: normaliseStatus(data)
+        filters,
+        departmentOptions: selectOptions(departments, filters.department, 'All departments'),
+        locationOptions: selectOptions(locations, filters.location, 'All locations'),
+        connection: connectionState(data),
+        search: data
       });
     } catch (error) {
       next(error);
@@ -121,6 +162,4 @@ function createApp(options = {}) {
   return app;
 }
 
-module.exports = { createApp, fetchBackendStatus, normaliseStatus };
-
-
+module.exports = { connectionState, createApp, fetchBiscuits, normaliseQuery };

@@ -65,6 +65,7 @@ Exit criteria:
 4. Create the VNet with:
    - `10.20.0.0/23` delegated to the Container Apps environment.
    - `10.20.2.0/24` for private endpoints, with private endpoint policies disabled.
+   - `10.20.3.0/27` reserved exclusively for future Azure SRE Agent VNet integration and delegated to `Microsoft.App/environments`.
 5. Create the VNet-integrated Container Apps environment.
 6. Create PostgreSQL Flexible Server 16, its application database and a seven-day backup policy.
 7. Disable PostgreSQL public network access.
@@ -87,7 +88,7 @@ Exit criteria:
 5. Verify:
    - Frontend `/health/live` and `/health/ready`.
    - Backend `/health/live`, `/health/ready` and `/api/status`.
-   - The frontend displays a status sourced from PostgreSQL.
+   - The frontend searches biscuit records sourced from PostgreSQL and separately displays API and database connectivity.
    - PostgreSQL has no public network path.
    - The PostgreSQL FQDN resolves privately from the Container Apps environment.
    - Application and platform logs arrive in Log Analytics.
@@ -130,7 +131,8 @@ The workload exposes intentionally simple signals for diagnosis:
 
 - Liveness endpoints show whether each process is running.
 - Readiness endpoints show whether required downstream dependencies are usable.
-- API responses identify whether data came from PostgreSQL, local mock mode or a database error.
+- API responses identify whether biscuit data came from PostgreSQL, local mock mode or a database error.
+- The frontend distinguishes an unreachable API from a reachable API whose PostgreSQL dependency has failed.
 - Structured JSON request and dependency errors are written to stdout for Container Apps log collection.
 - Container Apps revision and probe state provides platform-level evidence.
 - PostgreSQL and Private Link resource health provides the data-layer evidence.

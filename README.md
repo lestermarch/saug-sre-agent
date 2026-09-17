@@ -6,16 +6,16 @@ This repository is the foundation for a mock public-service demo that Azure SRE 
 - Database issue caused by private networking or PostgreSQL availability problems
 - Code issue caused by a bad GitHub commit reaching the live deployment
 
-The repository contains a Vue- or simple HTML-style public service experience, a separate backend API, and an Azure PostgreSQL Flexible Server configured with public network access disabled and private endpoint connectivity.
+The repository contains a GOV.UK-style public service experience, a separate backend API, and an Azure PostgreSQL Flexible Server configured with public network access disabled and private endpoint connectivity.
 
 The goal is to deploy the infrastructure and application stack, without deploying Azure SRE Agent itself. Azure SRE Agent is left to the later demo phase.
 
 ## Architecture
 
-- Frontend: Azure Container App with public ingress, simple GOV.UK-inspired web experience
-- Backend API: Azure Container App that exposes application data and calls PostgreSQL over the private network
+- Frontend: Azure Container App with public ingress and a GOV.UK Frontend search experience
+- Backend API: Azure Container App that searches a humorous government biscuit register in PostgreSQL
 - Database: Azure Database for PostgreSQL Flexible Server with public access disabled and a private endpoint in the VNet
-- Network: one VNet with a Container Apps infrastructure subnet and a private endpoint subnet
+- Network: one VNet with Container Apps, private endpoint, and reserved Azure SRE Agent integration subnets
 
 ## Repo layout
 
@@ -46,6 +46,13 @@ export BACKEND_URL=http://localhost:8081
 export DATABASE_URL="postgresql://pgadmin:ChangeMe123!@localhost:5432/appdb?sslmode=disable"
 ```
 
+The home page performs a live biscuit search through the API. Two connection indicators make the failure boundary explicit:
+
+- **API available** means the frontend can reach the backend Container App.
+- **Database reachable** means the API successfully queried PostgreSQL over Private Link.
+
+The database is seeded automatically with fictional biscuit holdings across government departments and offices.
+
 ## Azure deployment
 
 This repo includes an `azd` project definition. To provision the environment:
@@ -58,6 +65,6 @@ Azure SRE Agent is deliberately not configured here; this repo is only the envir
 
 ## Demo story
 
-The public-facing site is deliberately styled like a very important government service, with humorous content that makes the importance feel absurdly overblown. The API and database are intentionally simple but realistic enough for Azure SRE Agent to inspect, diagnose, and fix.
+The public-facing site is deliberately styled like a very important government service, with humorous biscuit inventory content. Search filters exercise the complete frontend-to-API-to-private-database path, making API and database incidents immediately visible.
 
 The demo environment is not a full production system; it is a safe simulated environment for observability and remediation exercises.

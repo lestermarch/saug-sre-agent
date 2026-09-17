@@ -107,6 +107,20 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
           privateEndpointNetworkPolicies: 'Disabled'
         }
       }
+      {
+        name: 'sre-agent-integration'
+        properties: {
+          addressPrefix: '10.20.3.0/27'
+          delegations: [
+            {
+              name: 'Microsoft.App.environments'
+              properties: {
+                serviceName: 'Microsoft.App/environments'
+              }
+            }
+          ]
+        }
+      }
     ]
   }
 }
@@ -428,3 +442,4 @@ output POSTGRES_SERVER_NAME string = postgresServer.name
 output POSTGRES_SERVER_FQDN string = postgresServer.properties.fullyQualifiedDomainName
 output POSTGRES_PUBLIC_NETWORK_ACCESS string = postgresServer.properties.network.publicNetworkAccess
 output POSTGRES_PRIVATE_ENDPOINT_ID string = postgresPrivateEndpoint.id
+output SRE_AGENT_SUBNET_ID string = resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'sre-agent-integration')
