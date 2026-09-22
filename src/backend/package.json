@@ -9,6 +9,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@azure/monitor-opentelemetry": "^1.20.0",
     "express": "5.2.1",
     "pg": "8.23.0"
   }

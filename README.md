@@ -19,10 +19,19 @@ The goal is to deploy the infrastructure and application stack, without deployin
 
 ## Repo layout
 
-- `infra/` – Bicep definitions for Azure networking, Container Apps environment, and PostgreSQL
+- `infra/` – Bicep definitions for Azure networking, Container Apps, PostgreSQL and monitoring alerts
 - `src/frontend/` – mock public service frontend application
 - `src/backend/` – API service with PostgreSQL connectivity and health status endpoint
 - `docs/implementation-plan.md` – phased implementation plan for the demo environment
+- `docs/sre-agent-setup.md` – manual SRE Agent onboarding, specialist-agent and incident-routing guide
+- `docs/observability.md` – Application Insights setup and Azure Monitor alert queries for the demo
+- `docs/knowledge-base/` – upload-ready architecture, failure-model and recovery knowledge for SRE Agent
+
+The deployed monitoring rules cover API 5xx/availability, database failures,
+private DNS/connectivity and supporting platform health. See
+[`docs/observability.md`](docs/observability.md) for thresholds, monitoring-only
+deployment and notification setup. The demo action group has no outbound
+notification receivers until an email recipient is configured.
 
 ## Local development
 
@@ -62,6 +71,19 @@ azd up
 ```
 
 Azure SRE Agent is deliberately not configured here; this repo is only the environment to be managed later in the demo pipeline.
+
+After the workload is deployed, follow
+[`docs/sre-agent-setup.md`](docs/sre-agent-setup.md) to configure one SRE Agent
+resource with a general Azure operator and a PostgreSQL specialist. The guide
+keeps onboarding manual so it can be demonstrated and reused independently of
+the workload deployment.
+
+For a recurring operational review, use the
+[weekly report prompt](.github/prompts/weekly-report.prompt.md) as the task
+details in an Azure SRE Agent weekly scheduled task. It requests a visual
+application-health report, incident review and assessment against all five
+Azure Well-Architected pillars, without changing the workload. The file includes
+setup guidance; it does not create the schedule.
 
 ## Traffic simulator
 

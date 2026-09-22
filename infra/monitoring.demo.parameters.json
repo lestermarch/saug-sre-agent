@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "namePrefix": {
+      "value": "sre-saug-sre-age-kebnnk"
+    },
+    "location": {
+      "value": "swedencentral"
+    },
+    "postgresServerName": {
+      "value": "sre-saug-sre-agent-se-kebnnkaxdvuaq-pg"
+    }
+  }
+}

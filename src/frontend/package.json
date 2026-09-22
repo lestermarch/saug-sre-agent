@@ -9,6 +9,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@azure/monitor-opentelemetry": "^1.20.0",
     "express": "^5.2.1",
     "govuk-frontend": "^6.5.0",
     "nunjucks": "^3.2.4"

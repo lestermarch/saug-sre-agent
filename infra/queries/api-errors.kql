@@ -1,0 +1,4 @@
+AppRequests
+| where AppRoleName == "backend"
+| where ResultCode startswith "5"
+| summarize SignalCount = count()

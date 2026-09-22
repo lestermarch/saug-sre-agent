@@ -1,0 +1,7 @@
+| where Detail has_any ("ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "ECONNRESET", "getaddrinfo")
+    or Detail contains "private DNS"
+    or Detail contains "DNS lookup"
+    or Detail contains "connection timeout"
+    or Detail contains "timeout expired"
+    or Detail contains "timeout exceeded when trying to connect"
+| summarize SignalCount = count()

@@ -19,6 +19,9 @@ param postgresAdminPassword string
 @description('The PostgreSQL database name.')
 param postgresDatabaseName string = 'publicservice'
 
+@description('Optional demo alert email recipient. Empty means portal alerts without email delivery.')
+param alertEmailAddress string = ''
+
 var token = uniqueString(subscription().id, resourceGroup().id, environmentName)
 var namePrefix = 'sre-${take(toLower(environmentName), 12)}-${take(token, 6)}'
 var tags = {
@@ -42,6 +45,18 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
     features: {
       enableLogAccessUsingOnlyResourcePermissions: true
     }
+  }
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: '${namePrefix}-appi'
+  location: location
+  tags: tags
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    IngestionMode: 'LogAnalytics'
+    WorkspaceResourceId: logAnalytics.id
   }
 }
 
@@ -288,6 +303,10 @@ resource backendApp 'Microsoft.App/containerApps@2025-01-01' = {
           name: 'database-url'
           value: 'postgresql://${postgresAdminLogin}:${uriComponent(postgresAdminPassword)}@${postgresServer.properties.fullyQualifiedDomainName}:5432/${postgresDatabase.name}?sslmode=require'
         }
+        {
+          name: 'appinsights-connection-string'
+          value: appInsights.properties.ConnectionString
+        }
       ]
     }
     template: {
@@ -307,6 +326,14 @@ resource backendApp 'Microsoft.App/containerApps@2025-01-01' = {
             {
               name: 'DATABASE_URL'
               secretRef: 'database-url'
+            }
+            {
+              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+              secretRef: 'appinsights-connection-string'
+            }
+            {
+              name: 'OTEL_SERVICE_NAME'
+              value: 'backend'
             }
           ]
           probes: [
@@ -380,6 +407,12 @@ resource frontendApp 'Microsoft.App/containerApps@2025-01-01' = {
           identity: appIdentity.id
         }
       ]
+      secrets: [
+        {
+          name: 'appinsights-connection-string'
+          value: appInsights.properties.ConnectionString
+        }
+      ]
     }
     template: {
       containers: [
@@ -398,6 +431,14 @@ resource frontendApp 'Microsoft.App/containerApps@2025-01-01' = {
             {
               name: 'BACKEND_URL'
               value: 'https://${backendApp.properties.configuration.ingress.fqdn}'
+            }
+            {
+              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+              secretRef: 'appinsights-connection-string'
+            }
+            {
+              name: 'OTEL_SERVICE_NAME'
+              value: 'frontend'
             }
           ]
           probes: [
@@ -432,6 +473,23 @@ resource frontendApp 'Microsoft.App/containerApps@2025-01-01' = {
   }
   dependsOn: [
     registryPull
+  ]
+}
+
+module monitoring 'monitoring.bicep' = {
+  name: 'workload-monitoring'
+  params: {
+    namePrefix: namePrefix
+    location: location
+    tags: tags
+    postgresServerName: postgresServer.name
+    alertEmailAddress: alertEmailAddress
+  }
+  dependsOn: [
+    logAnalytics
+    appInsights
+    backendApp
+    frontendApp
   ]
 }
 

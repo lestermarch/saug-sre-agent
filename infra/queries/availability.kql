@@ -1,0 +1,4 @@
+AppAvailabilityResults
+| where Name == "__TEST_NAME__"
+| where Success == false
+| summarize SignalCount = dcount(Location) by bin(TimeGenerated, 5m)

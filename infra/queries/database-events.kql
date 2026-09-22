@@ -1,0 +1,5 @@
+ContainerAppConsoleLogs_CL
+| where ContainerAppName_s == "__BACKEND_APP__"
+| extend Event = parse_json(Log_s)
+| where tostring(Event.event) in ("postgres-readiness-failed", "postgres-query-failed", "biscuit-search-failed")
+| project TimeGenerated, EventName = tostring(Event.event), Detail = tostring(Event.message)

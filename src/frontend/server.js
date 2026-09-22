@@ -1,3 +1,11 @@
+const { useAzureMonitor } = require('@azure/monitor-opentelemetry');
+
+if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
+  useAzureMonitor();
+} else {
+  console.warn('Application Insights telemetry is disabled because APPLICATIONINSIGHTS_CONNECTION_STRING is not set.');
+}
+
 const { createApp } = require('./app');
 
 const port = Number(process.env.PORT || 8080);

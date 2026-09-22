@@ -1,0 +1,5 @@
+ContainerAppSystemLogs_CL
+| where ContainerAppName_s in ("__BACKEND_APP__", "__FRONTEND_APP__")
+| where Type_s == "Warning"
+| where Reason_s in ("ProbeFailed", "Failed", "BackOff", "ErrImagePull", "ImagePullBackOff", "ContainerCrashing", "KEDAScalerFailed", "ScaledObjectCheckFailed")
+| summarize SignalCount = count()
