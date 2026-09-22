@@ -131,6 +131,10 @@ function createApp(options = {}) {
             UNIQUE (name, department, office)
           )
         `);
+        await pool.query(`
+          ALTER TABLE public.biscuits
+          ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0)
+        `);
 
         const statusCount = await pool.query('SELECT COUNT(*) AS row_count FROM public.service_status');
         if (Number(statusCount.rows[0].row_count) === 0) {

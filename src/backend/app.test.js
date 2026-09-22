@@ -70,12 +70,15 @@ test('database search uses parameterised filters and reports connectivity', asyn
   const baseUrl = await listen(createApp({ pool }));
   const response = await fetch(`${baseUrl}/api/biscuits?search=tea&location=East%20Kilbride`);
   const body = await response.json();
+  const migrationCall = calls.find(({ sql }) => sql.includes('ADD COLUMN IF NOT EXISTS quantity'));
   const searchCall = calls.find(({ sql }) => sql.includes('SELECT id'));
 
   assert.equal(response.status, 200);
   assert.equal(body.source, 'database');
   assert.equal(body.database.reachable, true);
   assert.equal(body.results[0].name, 'Shortbread Finger');
+  assert.ok(migrationCall);
+  assert.ok(calls.indexOf(migrationCall) < calls.indexOf(searchCall));
   assert.deepEqual(searchCall.parameters, ['%tea%', 'East Kilbride']);
   assert.match(searchCall.sql, /ILIKE \$1/);
   assert.match(searchCall.sql, /location = \$2/);
