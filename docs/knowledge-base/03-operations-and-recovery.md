@@ -200,9 +200,13 @@ search. API recovery alone is not proof that PostgreSQL connectivity works.
    healthy.
 8. Verify the PostgreSQL FQDN resolves to the expected private endpoint address
    from the VNet-integrated diagnostic environment.
-9. Inspect backend errors and classify DNS, timeout, refused connection, TLS,
-   authentication or SQL failure.
-10. Use direct SQL only through an approved read-only psql tool and a dedicated
+9. Inspect ordered outbound rules on the Container Apps infrastructure NSG for
+   the Container Apps subnet to the resolved private endpoint address on TCP
+   5432. Record the matching rule's access, priority, source, destination and
+   port; a lower priority number takes precedence.
+10. Inspect backend errors and classify DNS, timeout, refused connection, TLS,
+    authentication or SQL failure.
+11. Use direct SQL only through an approved read-only psql tool and a dedicated
     diagnostic login.
 
 ### Preferred recovery order
@@ -212,6 +216,8 @@ Choose only the branch supported by evidence:
 - resume or restore a PostgreSQL server that is unexpectedly unavailable
 - restore an accidentally removed or invalid private DNS link or zone group
 - correct a failed private endpoint approval or narrowly scoped network setting
+  only after recording the conflicting rule; preserve its source, destination,
+  port, protocol and priority, and roll back by restoring its prior access
 - restore the correct backend secret reference
 - deploy a tested application fix for a schema/query regression
 
